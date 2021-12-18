@@ -12,15 +12,15 @@ import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 
-class FaceAnalyzer(val facesState: SnapshotStateList<Face>) : ImageAnalysis.Analyzer {
+class FaceAnalyzer(val facesState: SnapshotStateList<Face>, val viewModel: MainViewModel) : ImageAnalysis.Analyzer {
 
     private val realTimeOpts = FaceDetectorOptions.Builder()
         .setContourMode(FaceDetectorOptions.CONTOUR_MODE_ALL)
         .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
         .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
-//        .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
+        .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
         .setMinFaceSize(0.20f)
-        .enableTracking()
+//        .enableTracking()
         .build()
 
     private val detector = FaceDetection.getClient(realTimeOpts)
@@ -38,6 +38,9 @@ class FaceAnalyzer(val facesState: SnapshotStateList<Face>) : ImageAnalysis.Anal
                     if (faces.size > 0){
                         facesState.clear()
                         facesState.addAll(faces)
+                        viewModel.previewWidth = inputImage.width
+                        viewModel.previewHeight = inputImage.height
+
 //                        viewModel.points.value = faces
                     }
                 }

@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Size
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -32,12 +33,14 @@ import kotlin.math.roundToInt
 @ExperimentalPermissionsApi
 class MainActivity : ComponentActivity() {
 
+    val viewModel: MainViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaskHackTheme {
                 Surface(color = MaterialTheme.colors.background) {
-                    CheckPermissionScreen()
+                    CheckPermissionScreen(viewModel)
                 }
             }
         }
@@ -46,7 +49,7 @@ class MainActivity : ComponentActivity() {
 
 @ExperimentalPermissionsApi
 @Composable
-fun CheckPermissionScreen() {
+fun CheckPermissionScreen(viewModel: MainViewModel) {
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
 
     PermissionRequired(
@@ -64,12 +67,12 @@ fun CheckPermissionScreen() {
             }
         }
     ) {
-        FaceRecognitionScreenContent()
+        FaceRecognitionScreenContent(viewModel)
     }
 }
 
 @Composable
-fun FaceRecognitionScreenContent() {
+fun FaceRecognitionScreenContent(viewModel: MainViewModel) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
     val selector = remember {
@@ -79,7 +82,6 @@ fun FaceRecognitionScreenContent() {
     val faces = remember {
         mutableStateListOf<Face>()
     }
-
 
 
 //    Scaffold {
@@ -110,7 +112,7 @@ fun FaceRecognitionScreenContent() {
                         .setImageQueueDepth(10)
                         .build()
                         .apply {
-                            setAnalyzer(executor, FaceAnalyzer(faces))
+                            setAnalyzer(executor, FaceAnalyzer(faces, viewModel))
                         }
 
                     cameraProvider.unbindAll()
@@ -135,7 +137,12 @@ fun FaceRecognitionScreenContent() {
 //            }
 
         faces.forEach { face ->
-            MaskView(face = face, facing = selector, maxWidthM = maxWidth.value, maxHeightM = maxHeight.value)
+            MaskView(
+                face = face,
+                facing = selector,
+                viewModel,
+                imageModels[5]
+            )
         }
 //        AndroidView(factory = { ctx ->
 //            mGraphicOverlay = GraphicOverlay(ctx, null)

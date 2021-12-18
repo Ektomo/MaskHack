@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.unit.dp
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceContour
 import com.google.mlkit.vision.face.FaceLandmark
@@ -24,98 +23,240 @@ import androidx.compose.ui.geometry.Size
 import android.R.attr.right
 
 import android.R.attr.left
+import android.content.Context
+import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.*
 import kotlin.math.roundToInt
+import android.util.DisplayMetrics
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 
 
 @Composable
-fun MaskView(face: Face, facing: MutableState<Int>, maxWidthM: Float, maxHeightM: Float) {
+fun MaskView(
+    face: Face,
+    facing: MutableState<Int>,
+    viewModel: MainViewModel,
+    imageModel: ImageModel
+) {
     val contour = face.allContours
 
-    var widthScaleFactor = 1.0f
-    var heightScaleFactor = 1.0f
-    val landmarks = face.allLandmarks
+    val orientation = LocalConfiguration.current.orientation
+    var widthScaleFactor = 1f
+    var heightScaleFactor = 1f
+//    val landmarks = face.allLandmarks
 
-    val imgWidth =
-        ((face.getLandmark(FaceLandmark.RIGHT_EYE)?.position?.x) ?: 0.0f) - (face.getLandmark(
-            FaceLandmark.LEFT_EYE
-        )?.position?.x ?: 0.0f)
-    val imgHeight = face.boundingBox.height()
-    val degree = face.headEulerAngleZ
+    val previewWidth: Int
+    val previewHeight: Int
+    if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+        previewWidth = viewModel.previewWidth
+        previewHeight = viewModel.previewHeight
+    } else {
+        previewWidth = viewModel.previewHeight
+        previewHeight = viewModel.previewWidth
+    }
 
+
+//    val minX = contour.minOfOrNull { cont -> (cont.points.minOfOrNull { it.x } ?: 0.0f) }
+//    val maxX = contour.maxOfOrNull { cont -> (cont.points.maxOfOrNull { it.x } ?: 0.0f) }
+//    val minY = contour.minOfOrNull { cont -> (cont.points.minOfOrNull { it.y } ?: 0.0f) }
+//    val maxY = contour.maxOfOrNull { cont -> (cont.points.maxOfOrNull { it.y } ?: 0.0f) }
 
     val configuration = LocalConfiguration.current
+    val density = configuration.densityDpi
+//    val screenHeightDp = configuration.screenHeightDp
+//
+//    val screenWidthDp = configuration.screenWidthDp
+    val screenHeight = convertDpToPixel(configuration.screenHeightDp.toFloat(), density)
 
-    val screenHeight = configuration.screenHeightDp.dp
-    val screenWidth = configuration.screenWidthDp.dp
+    val screenWidth = convertDpToPixel(configuration.screenWidthDp.toFloat(), density)
 
-    val a = ""
+    widthScaleFactor = screenWidth / previewWidth
+    heightScaleFactor = screenHeight / previewHeight
 
 
+    val degreeZ = face.headEulerAngleZ
+    val degreeX = face.headEulerAngleX
+    val degreeY = face.headEulerAngleY
 
 
     BoxWithConstraints(
         modifier = Modifier
-            .width(imgWidth.dp)
-            .height(imgHeight.dp)
+            .fillMaxWidth()
+//            .height((maxHeightM * 1.5).dp)
     ) {
 
-        widthScaleFactor = 1.5f
-        heightScaleFactor = 1.5f
+        widthScaleFactor = screenWidth / previewWidth
+        heightScaleFactor = screenHeight / previewHeight
 
-        contour.forEach { fc ->
-            fc.points.forEach { pf ->
-                Canvas(modifier = Modifier.fillMaxSize(), onDraw = {
-                    drawCircle(
-                        Color.Magenta, 8f, Offset(
-                            translateX(pf.x, facing.value, maxWidthM, widthScaleFactor),
-                            translateY(pf.y, heightScaleFactor)
-                        )
-                    )
-                })
-            }
-        }
+        val rightEarXPx = translateX(
+            (face.getLandmark(FaceLandmark.RIGHT_EAR)?.position?.x) ?: 0.0f,
+            widthScaleFactor
+        )
 
-        landmarks.forEach { fc ->
-//            fc.points.forEach { pf ->
+        val rightEarX =
+            convertPixelsToDp(
+                rightEarXPx, density
+            )
+
+//        val rightEarY =
+//            translateY(
+//                (face.getLandmark(FaceLandmark.RIGHT_EAR)?.position?.y) ?: 0.0f,
+//                heightScaleFactor
+//            )
+
+        val leftEyeYPx = translateY(
+            face.getLandmark(
+                FaceLandmark.LEFT_EYE
+            )?.position?.y ?: 0.0f, heightScaleFactor
+        )
+        val leftEyeY = convertPixelsToDp(
+            leftEyeYPx, density
+        )
+
+        val rightEyeYPx = translateY(
+            face.getLandmark(
+                FaceLandmark.RIGHT_EYE
+            )?.position?.y ?: 0.0f, heightScaleFactor
+        )
+
+        val leftEarXPx = translateX(
+            (face.getLandmark(FaceLandmark.LEFT_EAR)?.position?.x ?: 0.0f),
+
+            widthScaleFactor
+        )
+        val leftEarX =
+            convertPixelsToDp(leftEarXPx, density)
+        val imgWidth =
+            getImageWidth(imageModel, rightEarX, leftEarX)
+
+        val mouthBottomYPx = translateY(
+            face.getLandmark(FaceLandmark.MOUTH_BOTTOM)?.position?.y ?: 0.0f,
+            heightScaleFactor
+        )
+
+
+        val imgHeightPoint: Int
+
+        if (imageModel.hasTop) {
+            val top = ((leftEyeYPx + rightEyeYPx) / 2) - screenHeight/5 + degreeX
             Canvas(modifier = Modifier.fillMaxSize(), onDraw = {
                 drawCircle(
                     Color.Cyan, 12f, Offset(
-                        translateX(fc.position.x, facing.value, maxWidthM, widthScaleFactor),
-                        translateY(fc.position.y, heightScaleFactor)
+                        screenWidth - leftEarXPx,
+                        top
                     )
                 )
-//                drawImage(R.drawable.carnival_mask)
             })
-//            }
+            if (imageModel.hasBottom) {
+
+            }
         }
 
+
+//        var leftEarY =
+//            convertPixelsToDp(
+//                translateY(
+//                    (face.getLandmark(FaceLandmark.LEFT_EAR)?.position?.y) ?: 0.0f,
+//                    heightScaleFactor
+//                ), density
+//            )
+
+
+//        ((maxX ?: 0f) - (minX ?: 0f)) / 2
+//        if (facing.value == CameraCharacteristics.LENS_FACING_BACK) rightEarX - leftEarX else leftEarX - rightEarX
+//    val widthCenter = (leftEarX + imgWidth / 2)
+
+//        val heightCenter =
+//            (leftEyeY)
+
+
+//        contour.forEach { fc ->
+//            fc.points.forEach { pf ->
+//                Canvas(modifier = Modifier.fillMaxSize(), onDraw = {
+//                    drawCircle(
+//                        Color.Magenta, 8f, Offset(
+//                            screenWidth - translateX(pf.x, widthScaleFactor),
+//                            translateY(pf.y, heightScaleFactor)
+//                        )
+//                    )
+//                })
+//            }
+//        }
+//
+//        landmarks.forEach { fc ->
+////            fc.points.forEach { pf ->
+//            Canvas(modifier = Modifier.fillMaxSize(), onDraw = {
+//
+//                val x = maxWidthM - translateX(fc.position.x, widthScaleFactor)
+//                val y = translateY(fc.position.y, heightScaleFactor)
+//                if (fc.landmarkType == FaceLandmark.LEFT_EAR) {
+////                    length = fc.position.length()/1000
+//                    println("")
+//                }
+//                drawCircle(
+//                    Color.Cyan, 12f, Offset(
+//                        x,
+//                        y
+//                    )
+//                )
+//            })
+////            }
+//        }
+//        val imageBitmap = ImageBitmap.imageResource(id = R.drawable.carnival_mask)
+//        Canvas(modifier = Modifier.width(imgWidth.dp).rotate(degree), onDraw = {
+//            drawImage(imageBitmap)
+//        })
+
+
+        //Основная отрисовка картинки
         Image(
             painter = painterResource(id = R.drawable.carnival_mask),
             contentDescription = "",
             modifier = Modifier
                 .width(imgWidth.dp)
-                .rotate(degree)
-                .align { size, space, layoutDirection ->
-                    val centerX = (space.width - size.width).toFloat() / 2f
-                    val centerY = (space.height - size.height).toFloat() / 2f
-                    val resolvedHorizontalBias = if (layoutDirection == LayoutDirection.Ltr) {
-                        1.0
+//                .rotate(degree)
+                .graphicsLayer {
+                    rotationX = degreeX
+                    rotationY = -degreeY
+                    rotationZ = degreeZ
+                    translationX = if (facing.value == CameraCharacteristics.LENS_FACING_FRONT) {
+                        screenWidth - rightEarXPx - (face.headEulerAngleY * 4)
                     } else {
-                        -1 * 1.0
+                        rightEarXPx - (face.headEulerAngleY * 4)
                     }
-
-                    val x = centerX * (1 + resolvedHorizontalBias)
-                    val y = centerY * (1 + 1.0)
-                    IntOffset(x.roundToInt(), y.roundToInt())
+                    translationY = leftEyeYPx - 220
                 }
+//                .align(BiasAlignment(0f, 0f))
+//                .padding(start = )
+//                .offset {
+//                    IntOffset(leftEarX.toInt(), heightCenter.toInt())
+//
+//                }
+//                .align { size, space, layoutDirection ->
+//                    val centerX = widthCenter
+//                    val h = rightEarX
+//                    val centerY = leftEyeY * 1.1
+//                    val resolvedHorizontalBias = if (layoutDirection == LayoutDirection.Ltr) {
+//                        0.3
+//                    } else {
+//                        -1 * 0.3
+//                    }
+//
+//                    val x = centerX
+//                    val y = centerY
+//                    IntOffset(x.roundToInt(), y.roundToInt())
+//                }
         )
 
 //        val x = translateX(face.boundingBox.centerX().toFloat(), facing.value, maxWidthM, widthScaleFactor)
@@ -139,37 +280,40 @@ fun MaskView(face: Face, facing: MutableState<Int>, maxWidthM: Float, maxHeightM
 }
 
 
-fun translateX(x: Float, type: Int, maxWidth: Float, widthScaleFactor: Float): Float {
-    return if (type == CameraCharacteristics.LENS_FACING_FRONT) {
-        maxWidth - scaleX(x - 475, widthScaleFactor)
+//Получить ширину картинки в зависимости от наличие ушей или рогов
+private fun getImageWidth(
+    imageModel: ImageModel,
+    rightEarX: Float,
+    leftEarX: Float
+) = if (imageModel.hasEar.has) {
+    if (imageModel.hasEar.isPair) {
+        (rightEarX - leftEarX) + 100
     } else {
-        scaleX(x, widthScaleFactor)
+        (rightEarX - leftEarX) + 50
     }
+} else {
+    (rightEarX - leftEarX)
 }
 
-fun translateY(y: Float, heightScaleFactor: Float): Float {
-    return scaleY(y - 20, heightScaleFactor)
-}
 
-
-fun scaleX(horizontal: Float, widthScaleFactor: Float): Float {
+//Учесть размеры экрана
+fun translateX(horizontal: Float, widthScaleFactor: Float): Float {
     return horizontal * widthScaleFactor
 }
 
-
-fun scaleY(vertical: Float, heightScaleFactor: Float): Float {
+//Учесть размеры экрана
+fun translateY(vertical: Float, heightScaleFactor: Float): Float {
     return vertical * heightScaleFactor
 }
 
 
-//
-//List<FaceLandmark> landmarks = face.getAllLandmarks();
-//for (FaceLandmark landmark : landmarks) {
-////      for (PointF point : faceContour.getPoints()) {
-//    float px = translateX (landmark.getPosition().x);
-//    float py = translateY (landmark.getPosition().y);
-//    canvas.drawCircle(px, py, FACE_POSITION_RADIUS, landmarkPositionPaint);
-////      }
-//}
+//Перевести dpi в пиксели
+fun convertDpToPixel(dp: Float, densityDp: Int): Float {
+    return dp * (densityDp.toFloat() / DisplayMetrics.DENSITY_DEFAULT)
+}
 
+//Перевести пиксели в dpi
+fun convertPixelsToDp(px: Float, densityDp: Int): Float {
+    return px / (densityDp.toFloat() / DisplayMetrics.DENSITY_DEFAULT)
+}
 
