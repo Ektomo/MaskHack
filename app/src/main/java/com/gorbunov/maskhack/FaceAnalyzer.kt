@@ -50,15 +50,20 @@ class FaceAnalyzer(val facesState: SnapshotStateList<Face>, val viewModel: MainV
                         viewModel.previewWidth = inputImage.width
                         viewModel.previewHeight = inputImage.height
                     }
+                    mediaImage.close()
                     imageProxy.close()
+
                 }
                 .addOnFailureListener {
+                    mediaImage.close()
                     imageProxy.close()
                 }
                 .addOnCompleteListener {
+                    mediaImage.close()
                     imageProxy.close()
                 }
                 .addOnCanceledListener{
+                    mediaImage.close()
                     imageProxy.close()
                 }
         }

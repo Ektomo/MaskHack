@@ -210,7 +210,7 @@ fun MaskView(
                         if (facing.value == CameraCharacteristics.LENS_FACING_FRONT) {
                             screenWidth - widthCenter - imageModel.requireSizePlus.value  - (face.headEulerAngleY * 4)
                         } else {
-                            widthCenter - (face.headEulerAngleY * 4)
+                            widthCenter - (face.headEulerAngleY * 4) - imageModel.requireSizePlus.value
                         }
                     translationY = imgHeightPoint - 150
 
