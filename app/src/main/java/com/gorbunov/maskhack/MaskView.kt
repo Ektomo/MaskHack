@@ -29,7 +29,7 @@ fun MaskView(
     viewModel: MainViewModel,
     imageModel: ImageModel
 ) {
-    val contour = face.allContours
+//    val contour = face.allContours
 
     val orientation = LocalConfiguration.current.orientation
     var widthScaleFactor = 1f
@@ -138,10 +138,12 @@ fun MaskView(
         val imgWidth =
             getImageWidth(imageModel, rightEarX, leftEarX)
 
-        val mouthBottomYPx = translateY(
-            face.getLandmark(FaceLandmark.MOUTH_BOTTOM)?.position?.y ?: 0.0f,
-            heightScaleFactor
-        )
+        val mouthBottomYPx =
+            translateY(
+                face.getLandmark(FaceLandmark.MOUTH_BOTTOM)?.position?.y ?: 0.0f,
+                heightScaleFactor
+            )
+
 
         val noseYPx = translateY(
             face.getLandmark(FaceLandmark.NOSE_BASE)?.position?.y ?: 0.0f,
@@ -175,28 +177,13 @@ fun MaskView(
             )
 
 
-//        var leftEarY =
-//            convertPixelsToDp(
-//                translateY(
-//                    (face.getLandmark(FaceLandmark.LEFT_EAR)?.position?.y) ?: 0.0f,
-//                    heightScaleFactor
-//                ), density
-//            )
 
-
-//        ((maxX ?: 0f) - (minX ?: 0f)) / 2
-//        if (facing.value == CameraCharacteristics.LENS_FACING_BACK) rightEarX - leftEarX else leftEarX - rightEarX
-//    val widthCenter = (leftEarX + imgWidth / 2)
-
-//        val heightCenter =
-//            (leftEyeY)
-
-
+        //Чтобы прорисовать контур, расскоментировать блок ниже и в FaceAnalyzer подключить сканирование контура
 //        contour.forEach { fc ->
 //            fc.points.forEach { pf ->
 //                Canvas(modifier = Modifier.fillMaxSize(), onDraw = {
 //                    drawCircle(
-//                        Color.Magenta, 8f, Offset(
+//                        Color.Magenta, 10f, Offset(
 //                            screenWidth - translateX(pf.x, widthScaleFactor),
 //                            translateY(pf.y, heightScaleFactor)
 //                        )
@@ -204,30 +191,8 @@ fun MaskView(
 //                })
 //            }
 //        }
-//
-//        landmarks.forEach { fc ->
-////            fc.points.forEach { pf ->
-//            Canvas(modifier = Modifier.fillMaxSize(), onDraw = {
-//
-//                val x = maxWidthM - translateX(fc.position.x, widthScaleFactor)
-//                val y = translateY(fc.position.y, heightScaleFactor)
-//                if (fc.landmarkType == FaceLandmark.LEFT_EAR) {
-////                    length = fc.position.length()/1000
-//                    println("")
-//                }
-//                drawCircle(
-//                    Color.Cyan, 12f, Offset(
-//                        x,
-//                        y
-//                    )
-//                )
-//            })
-////            }
-//        }
-//        val imageBitmap = ImageBitmap.imageResource(id = R.drawable.carnival_mask)
-//        Canvas(modifier = Modifier.width(imgWidth.dp).rotate(degree), onDraw = {
-//            drawImage(imageBitmap)
-//        })
+
+
 
 
         //Основная отрисовка картинки
@@ -243,49 +208,15 @@ fun MaskView(
                     rotationZ = degreeZ
                     translationX =
                         if (facing.value == CameraCharacteristics.LENS_FACING_FRONT) {
-                            screenWidth - widthCenter  - (face.headEulerAngleY * 4)
+                            screenWidth - widthCenter - imageModel.requireSizePlus.value  - (face.headEulerAngleY * 4)
                         } else {
                             widthCenter - (face.headEulerAngleY * 4)
                         }
                     translationY = imgHeightPoint - 150
 
                 }
-//                .align(BiasAlignment(0f, 0f))
-//                .padding(start = )
-//                .offset {
-//                    IntOffset(leftEarX.toInt(), heightCenter.toInt())
-//
-//                }
-//                .align { size, space, layoutDirection ->
-//                    val centerX = widthCenter
-//                    val h = rightEarX
-//                    val centerY = leftEyeY * 1.1
-//                    val resolvedHorizontalBias = if (layoutDirection == LayoutDirection.Ltr) {
-//                        0.3
-//                    } else {
-//                        -1 * 0.3
-//                    }
-//
-//                    val x = centerX
-//                    val y = centerY
-//                    IntOffset(x.roundToInt(), y.roundToInt())
-//                }
         )
 
-//        val x = translateX(face.boundingBox.centerX().toFloat(), facing.value, maxWidthM, widthScaleFactor)
-//        val y = translateY(face.boundingBox.centerY().toFloat(), heightScaleFactor)
-//        val xOffset = scaleX(face.boundingBox.width().toFloat() , widthScaleFactor)
-//        val yOffset = scaleY(face.boundingBox.height().toFloat() , heightScaleFactor)
-//        val left = x - xOffset
-//        val top = y - yOffset
-//        val right = x + xOffset
-//        val bottom = y + yOffset
-//
-//        Canvas(modifier = Modifier
-//            .fillMaxWidth(0.3f)
-//            .fillMaxHeight(0.3f), onDraw = {
-//            drawRect(Color.White, Offset(left, top), Size(face.boundingBox.width().toFloat(), face.boundingBox.height().toFloat()))
-//        })
 
     }
 
@@ -295,7 +226,13 @@ fun MaskView(
 }
 
 
-//Рассчитать координать
+/**
+ * Самое широкое место для ошибок, здесь очень очень очень грубые рассчеты для вертикального смещения
+ *  Идея в том, что мы просто идем от верхнего элемента(можно от нижнего) и сужаем все варианты
+ *  таким образом в конце концов мы находим расстояние на которое надо сместить маску по вертикали.
+ *  Это писалось ночью и тут допущена масса ошибок, которые я не успел поправить, а после бессоной ночи
+ *      голова соображает туговато)
+ */
 @Composable
 private fun getYCoordinate(
     imageModel: ImageModel,
@@ -326,23 +263,23 @@ private fun getYCoordinate(
                 ((topY + bottomY) / 2)
             }
             imageModel.hasMouth -> {
-                ((topY + mouthBottomYPx) / 2)
+                ((topY + mouthBottomYPx) / 2) - 100
             }
             imageModel.hasNose -> {
-                ((topY + noseYPx) / 2)
+                ((topY + noseYPx) / 2) - 100
             }
             imageModel.hasEye.has -> {
                 when {
                     imageModel.hasEye.left && !imageModel.hasEye.right -> {
-                        ((topY + leftEyeYPx) / 2)
+                        ((topY + leftEyeYPx) / 2) - 200
 
                     }
                     imageModel.hasEye.right && !imageModel.hasEye.left -> {
-                        ((topY + rightEyeYPx) / 2)
+                        ((topY + rightEyeYPx) / 2) - 200
 
                     }
                     else -> {
-                        ((topY + (rightEyeYPx + leftEyeYPx) / 2) / 2) - 300
+                        ((topY + (rightEyeYPx + leftEyeYPx) / 2) / 2) - 200
 
                     }
                 }
@@ -365,7 +302,7 @@ private fun getYCoordinate(
                 }
             }
             else -> {
-                topY - 150
+                topY - 100
 
             }
         }
@@ -501,7 +438,7 @@ private fun getImageWidth(
 //        (rightEarX - leftEarX) + 50
 //    }
 //} else {
-    (rightEarX - leftEarX)
+    (rightEarX - leftEarX) +  imageModel.requireSizePlus.value
 //}
 
 

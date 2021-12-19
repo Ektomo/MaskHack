@@ -17,6 +17,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 
 
+//Вью выбора маски
 @Composable
 fun MaskList(list: List<ImageModel>, modifier: Modifier, onClick: (Int) -> Unit){
     LazyRow(horizontalArrangement = Arrangement.SpaceBetween ,  contentPadding = PaddingValues(8.dp)){

@@ -16,7 +16,7 @@ import com.google.mlkit.vision.face.FaceDetectorOptions
 class FaceAnalyzer(val facesState: SnapshotStateList<Face>, val viewModel: MainViewModel) : ImageAnalysis.Analyzer {
 
     private val realTimeOpts = FaceDetectorOptions.Builder()
-//        .setContourMode(FaceDetectorOptions.CONTOUR_MODE_ALL)
+        .setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE)
         .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
         .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
         .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
@@ -27,8 +27,11 @@ class FaceAnalyzer(val facesState: SnapshotStateList<Face>, val viewModel: MainV
     private val detector = FaceDetection.getClient(realTimeOpts)
 
 
-
-
+    /**
+     * Здесь мы получим известную ошибку, когда переполнятся свободные ячейки, хотя imageProxy.close() должен решать
+     *  эту проблему, но почему-то здесь не решает. Получить изображение можно иным, более безопасным способом
+     *  это просто подольше реализовывать
+     */
     @SuppressLint("UnsafeOptInUsageError")
     override fun
             analyze(imageProxy: ImageProxy) {

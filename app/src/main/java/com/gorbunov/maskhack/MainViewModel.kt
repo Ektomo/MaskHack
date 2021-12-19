@@ -7,6 +7,12 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.google.mlkit.vision.face.Face
 
+
+/**В данном примере viewModel используется только для передачи набора объектов,
+ *  для этого мог подойти любой pojo class, но если грузить информацию из сети
+ *  или делать сложные расчета неотносящиеся к вью, я бы использовал эти функции здесь,
+ *  подписываясь на результат и обновляя compose view
+*/
 class MainViewModel : ViewModel() {
     val faces = MutableLiveData<MutableList<Face>>()
     val cameraState = MutableLiveData(CameraCharacteristics.LENS_FACING_FRONT)
@@ -17,6 +23,11 @@ class MainViewModel : ViewModel() {
 
 }
 
+/**
+ * Список заранее подготовленных моделей,
+ *      достаточно использовать несколько главных параметров, на основе которых можно сделать
+ *      алгоритм рассчета местоположения
+ */
 val imageModels = listOf(
     ImageModel(
         path = R.drawable.carnival_mask,
@@ -35,7 +46,7 @@ val imageModels = listOf(
         hasMouth = false,
         hasTop = true,
         hasBottom = false,
-        requireSizePlus = 100.dp
+        requireSizePlus = 60.dp
     ),
     ImageModel(
         path = R.drawable.deer_face,
@@ -45,7 +56,7 @@ val imageModels = listOf(
         hasMouth = false,
         hasTop = true,
         hasBottom = false,
-        requireSizePlus = 200.dp
+        requireSizePlus = 80.dp
     ),
     ImageModel(
         path = R.drawable.deer_horns,

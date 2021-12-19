@@ -58,6 +58,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+//Точка входа в приложение с проверкой разрешения использолвания камеры
 @ExperimentalPermissionsApi
 @Composable
 fun CheckPermissionScreen(viewModel: MainViewModel) {
@@ -82,6 +83,8 @@ fun CheckPermissionScreen(viewModel: MainViewModel) {
     }
 }
 
+
+//Основной экран, здесь создается экземпляр камеры, здесь подписывается на определние лица
 @Composable
 fun FaceRecognitionScreenContent(viewModel: MainViewModel) {
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -143,13 +146,6 @@ fun FaceRecognitionScreenContent(viewModel: MainViewModel) {
             },
         )
 
-//            faces.value?.forEach {face ->
-//                for (i in 1..(face.allContours.size)){
-//                    if (face.getContour(i)?.points != null){
-//                        SinusPlotter(face = face.getContour(i)!!.points, color = colors[i], maxHeight, maxWidth)
-//                    }
-//                }
-//            }
 
         faces.forEach { face ->
             MaskView(
@@ -177,15 +173,3 @@ fun FaceRecognitionScreenContent(viewModel: MainViewModel) {
     }
 }
 
-@Composable
-fun Greeting(name: String) {
-    Text(text = "Hello $name!")
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DefaultPreview() {
-    MaskHackTheme {
-        Greeting("Android")
-    }
-}
