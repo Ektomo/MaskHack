@@ -2,6 +2,7 @@ package com.gorbunov.maskhack
 
 import android.Manifest
 import android.os.Bundle
+import android.os.Looper
 import android.util.Size
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,24 +11,34 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionRequired
 import com.google.accompanist.permissions.rememberPermissionState
+import com.google.android.gms.common.util.concurrent.HandlerExecutor
 import com.google.mlkit.vision.face.Face
 import com.gorbunov.maskhack.ui.theme.MaskHackTheme
+import java.util.concurrent.Executor
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.ThreadPoolExecutor
 import kotlin.math.roundToInt
 
 @ExperimentalPermissionsApi
@@ -78,10 +89,14 @@ fun FaceRecognitionScreenContent(viewModel: MainViewModel) {
     val selector = remember {
         mutableStateOf(CameraSelector.LENS_FACING_FRONT)
     }
+    var imageAnalysis: ImageAnalysis? = null
+    var previewView: PreviewView? = null
+    var executor: Executor?
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val faces = remember {
         mutableStateListOf<Face>()
     }
+    val itemIdx = remember{ mutableStateOf(0)}
 
 
 //    Scaffold {
@@ -92,27 +107,27 @@ fun FaceRecognitionScreenContent(viewModel: MainViewModel) {
             modifier = Modifier.matchParentSize(),
             factory = { ctx ->
 
-                val previewView = PreviewView(ctx)
-                val executor = ContextCompat.getMainExecutor(ctx)
+                previewView = PreviewView(ctx)
+                executor = ContextCompat.getMainExecutor(ctx)
 
                 cameraProviderFuture.addListener({
 
                     val cameraProvider = cameraProviderFuture.get()
                     val preview = androidx.camera.core.Preview.Builder().build().also {
-                        it.setSurfaceProvider(previewView.surfaceProvider)
+                        it.setSurfaceProvider(previewView!!.surfaceProvider)
                     }
 
                     val cameraSelector = CameraSelector.Builder()
                         .requireLensFacing(selector.value)
                         .build()
 
-                    val imageAnalysis = ImageAnalysis.Builder()
+                    imageAnalysis = ImageAnalysis.Builder()
                         .setTargetResolution(Size(maxWidth.value.toInt(), maxHeight.value.toInt()))
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .setImageQueueDepth(10)
+                        .setImageQueueDepth(5)
                         .build()
                         .apply {
-                            setAnalyzer(executor, FaceAnalyzer(faces, viewModel))
+                            setAnalyzer(executor!!, FaceAnalyzer(faces, viewModel))
                         }
 
                     cameraProvider.unbindAll()
@@ -122,9 +137,9 @@ fun FaceRecognitionScreenContent(viewModel: MainViewModel) {
                         preview,
                         imageAnalysis
                     )
-                }, executor)
+                }, executor!!)
 
-                previewView
+                previewView!!
             },
         )
 
@@ -141,44 +156,24 @@ fun FaceRecognitionScreenContent(viewModel: MainViewModel) {
                 face = face,
                 facing = selector,
                 viewModel,
-                imageModels[5]
+                imageModels[itemIdx.value]
             )
         }
-//        AndroidView(factory = { ctx ->
-//            mGraphicOverlay = GraphicOverlay(ctx, null)
-//            mGraphicOverlay!!.setCameraInfo(
-//                (maxWidth.value * 2).roundToInt(),
-//                (maxHeight.value * 2).roundToInt(),
-//                selector.value
-//            )
-//
-//            mGraphicOverlay!!
-//        })
-//
-////            if (faces.value != null){
-////                drawContur(faces = faces.value!!)
-////            }
-//
-//
-//        DisposableEffect(key1 = faces.value) {
-//            if (faces.value != null && mGraphicOverlay != null) {
-//                faces.value!!.forEach { face ->
-//                    mGraphicOverlay!!.clear()
-//                    val f: Face = face
-//                    val faceContourGraphic = FaceContourGraphic(mGraphicOverlay)
-//                    mGraphicOverlay!!.add(faceContourGraphic)
-//                    faceContourGraphic.updateFace(f)
-//                }
-//
-//            } else if (faces.value != null && faces.value!!.isEmpty()) {
-//                mGraphicOverlay?.clear()
-//            }
-//
-//            onDispose { mGraphicOverlay?.clear() }
-//
-//        }
+
+        MaskList(list = imageModels, modifier = Modifier.height(100.dp)){
+            itemIdx.value = it
+        }
 
 
+
+    }
+    
+    DisposableEffect(key1 = imageAnalysis){
+        onDispose {
+            previewView = null
+            executor = null
+            imageAnalysis?.apply { clearAnalyzer() }
+        }
     }
 }
 
